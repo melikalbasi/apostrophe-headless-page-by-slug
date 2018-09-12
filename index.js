@@ -57,7 +57,10 @@ module.exports = {
             if (err) {
               return res.status((typeof(err) !== 'object') ? err : 500).send({ 'error': 'error' });
             } else {
-              return res.send({ bearer: bearer });
+              return res.send({ 
+                bearer: bearer,
+                user: user
+              });
             }
           });
           function checkCredentials(callback) {
