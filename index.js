@@ -59,7 +59,10 @@ module.exports = {
             } else {
               return res.send({ 
                 bearer: bearer,
-                user: user
+                user: {
+                  firstName: user.firstName,
+                  lastName: user.lastName
+                }
               });
             }
           });
