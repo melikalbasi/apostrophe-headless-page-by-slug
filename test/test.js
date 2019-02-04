@@ -14,14 +14,8 @@ describe('test apostrophe-headless', function() {
 
   this.timeout(20000);
 
-  after(function(done) {
-    apos.db.dropDatabase(function(err) {
-      if (err) {
-        console.error(err);
-      }
-      fs.removeSync(__dirname + '/public/uploads/attachments');
-      done();
-    });
+   after(function(done) {
+    require('apostrophe/test-lib/util').destroy(apos, done);
   });
 
   it('initializes', function(done) {
@@ -39,7 +33,9 @@ describe('test apostrophe-headless', function() {
         },
         'products': {
           extend: 'apostrophe-pieces',
-          restApi: true,
+          restApi: {
+            safeDistinct: [ '_articles' ]
+          },
           name: 'product',
           apiKeys: ['product-key' ],
           apiTemplates: [ 'fragment' ],
@@ -82,6 +78,28 @@ describe('test apostrophe-headless', function() {
                   type: 'string'
                 }
               ]
+            },
+            {
+              name: '_articles',
+              type: 'joinByArray',
+              filters: {
+                projection: {
+                  title: 1,
+                  slug: 1,
+                },
+              },
+              api: 'editPermissionRequired',
+            }
+          ]
+        },
+        articles: {
+          extend: 'apostrophe-pieces',
+          restApi: true,
+          name: 'article',
+          addFields: [
+            {
+              name: 'name',
+              type: 'string'
             }
           ]
         },
@@ -452,6 +470,37 @@ describe('test apostrophe-headless', function() {
     }, function(err, response) {
       assert(!err);
       done();
+    });
+  });
+
+  it('can insert a product with joins', function(done) {
+    http('/api/v1/articles', 'POST', { apiKey: 'skeleton-key' }, {
+      title: 'First Article',
+      name: 'first-article'
+    }, undefined, function(err, response) {
+      assert(!err);
+      var articleId = response._id;
+      assert(articleId);
+
+      http('/api/v1/products', 'POST', { apiKey: 'skeleton-key' }, {
+        title: 'Product Key Product With Join',
+        body: {
+          type: 'area',
+          items: [
+            {
+              type: 'apostrophe-rich-text',
+              id: cuid(),
+              content: '<p>This is the product key product with join</p>'
+            }
+          ]
+        },
+        articlesIds: [articleId], 
+      }, undefined, function(err, response) {
+        assert(!err);
+        assert(response._id);
+        assert(response.articlesIds[0] === articleId);
+        done();
+      });
     });
   });
 
@@ -1023,6 +1072,223 @@ describe('test apostrophe-headless', function() {
       assert(response.rendered && response.rendered.fragment && response.rendered.fragment.indexOf('<h4>Tab Two</h4>') !== -1);
       assert(response.rendered && response.rendered.fragment && response.rendered.fragment.indexOf('cheese') !== -1);
       done();
+    });
+  });
+
+  it('cannot GET a product when user has not the right permission', function(done) {
+    var saveRestApi = apos.modules.products.options.restApi;
+    apos.modules.products.options.restApi = {
+      getRequiresEditPermission: true
+    }
+    return http('/api/v1/products', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      assert(response.results.length === 0);
+      apos.modules.products.options.restApi = saveRestApi;
+      done();
+    });
+  }); 
+
+  it('can GET a product without private fields', function(done) {
+    apos.modules.products.schema[0].api = false;
+    var name = apos.modules.products.schema[0].name;
+    return http('/api/v1/products', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      assert(typeof response.results[0][name] === 'undefined');
+      apos.modules.products.schema[0].api = true;
+      done();
+    });
+  }); 
+
+  it('can GET a product with only some fields and includeFields has the priority over excludeFields', function(done) {
+    apos.modules.products.schema[0].api = false;
+    var name = apos.modules.products.schema[0].name;
+    return http('/api/v1/products?includeFields=slug,type&excludeFields=slug,type', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      assert(typeof response.results[0].slug === 'string');
+      assert(typeof response.results[0][name] === 'undefined');
+      assert(typeof response.results[0].published === 'undefined');
+      apos.modules.products.schema[0].api = true;
+      done();
+    });
+  }); 
+
+  it('can GET a product with only some fields but an excluded field from schema is always excluded', function(done) {
+    apos.modules.products.schema[0].api = false;
+    var name = apos.modules.products.schema[0].name;
+    return http('/api/v1/products?includeFields=slug,type,' + name, 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      assert(typeof response.results[0].slug === 'string');
+      assert(typeof response.results[0][name] === 'undefined');
+      assert(typeof response.results[0].published === 'undefined');
+      apos.modules.products.schema[0].api = true;
+      done();
+    });
+  }); 
+
+  it('can GET a product with only some fields excluded', function(done) {
+    apos.modules.products.schema[0].api = false;
+    var name = apos.modules.products.schema[0].name;
+    return http('/api/v1/products?excludeFields=slug,type', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      assert(typeof response.results[0].slug === 'undefined');
+      assert(typeof response.results[0][name] === 'undefined');
+      assert(typeof response.results[0].published === 'boolean');
+      apos.modules.products.schema[0].api = true;
+      done();
+    });
+  }); 
+
+  it('can GET a product with only some fields excluded and an excluded field from schema is still excluded', function(done) {
+    apos.modules.products.schema[0].api = false;
+    var name = apos.modules.products.schema[0].name;
+    return http('/api/v1/products?excludeFields=slug,type,' + name, 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      assert(typeof response.results[0].slug === 'undefined');
+      assert(typeof response.results[0][name] === 'undefined');
+      assert(typeof response.results[0].published === 'boolean');
+      apos.modules.products.schema[0].api = true;
+      done();
+    });
+  }); 
+
+  it('can GET a product without excluded joins', function(done) {
+    return http('/api/v1/products', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      var product = _.find(response.results, { slug: 'product-key-product-with-join' });
+      assert(typeof product['_articles'] === 'undefined');
+      done();
+    });
+  }); 
+
+  it('can GET a product without excluded joins even if included in query', function(done) {
+    return http('/api/v1/products?includeFields=slug,type,_articles', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      var product = _.find(response.results, { slug: 'product-key-product-with-join' });
+      assert(typeof product.type === 'string');
+      assert(typeof product.slug === 'string');
+      assert(typeof product['_articles'] === 'undefined');
+      done();
+    });
+  }); 
+
+  it('can GET a product with joins', function(done) {
+    var articleInSchema = _.find(apos.modules.products.schema, { name: '_articles' })
+    articleInSchema.api = true
+    return http('/api/v1/products', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      var product = _.find(response.results, { slug: 'product-key-product-with-join' });
+      assert(Array.isArray(product['_articles']));
+      assert(product['_articles'].length === 1);
+      articleInSchema.api = 'editPermissionRequired';
+      done();
+    });
+  }); 
+
+  it('can GET a product with included joins', function(done) {
+    var articleInSchema = _.find(apos.modules.products.schema, { name: '_articles' })
+    articleInSchema.api = true
+    return http('/api/v1/products?includeFields=slug,type,_articles', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      var product = _.find(response.results, { slug: 'product-key-product-with-join' });
+      assert(typeof product.type === 'string');
+      assert(typeof product.slug === 'string');
+      assert(Array.isArray(product['_articles']));
+      assert(product['_articles'].length === 1);
+      articleInSchema.api = 'editPermissionRequired';
+      done();
+    });
+  }); 
+
+  it('can GET results with distinct article join information', function(done) {
+    return http('/api/v1/products?distinct=_articles', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      assert(response.distinct);
+      assert(response.distinct._articles);
+      assert(response.distinct._articles[0].label === 'First Article');
+      done();
+    });
+  }); 
+
+  it('can GET results with distinct article join count information', function(done) {
+    return http('/api/v1/products?distinct-counts=_articles', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      assert(response.distinct);
+      assert(response.distinct._articles);
+      assert(response.distinct._articles[0].label === 'First Article');
+      assert(response.distinct._articles[0].count === 1);
+      done();
+    });
+  });
+
+  it('can patch a join', function(done) {
+    http('/api/v1/articles', 'POST', { apiKey: 'skeleton-key' }, {
+      title: 'Join Article',
+      name: 'join-article'
+    }, undefined, function(err, response) {
+      assert(!err);
+      var articleId = response._id;
+      assert(articleId);
+
+      http('/api/v1/products', 'POST', { apiKey: 'skeleton-key' }, {
+        title: 'Initially No Join Value',
+        body: {
+          type: 'area',
+          items: [
+            {
+              type: 'apostrophe-rich-text',
+              id: cuid(),
+              content: '<p>This is the product key product without initial join</p>'
+            }
+          ]
+        },
+      }, undefined, function(err, response) {
+        assert(!err);
+        var product = response;
+        assert(product._id);
+        http('/api/v1/products/' + product._id, 'PATCH', { apiKey: 'skeleton-key' }, {
+          title: 'Initially No Join Value',
+          body: {
+            type: 'area',
+            items: [
+              {
+                type: 'apostrophe-rich-text',
+                id: cuid(),
+                content: '<p>This is the product key product without initial join</p>'
+              }
+            ]
+          },
+          articlesIds: [articleId], 
+        }, undefined, function(err, response) {
+          assert(!err);
+          assert(response.articlesIds);
+          assert(response.articlesIds[0] === articleId);
+          done();
+        });
+      });
     });
   });
 
