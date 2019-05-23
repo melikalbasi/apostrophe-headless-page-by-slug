@@ -14,14 +14,14 @@ describe('test apostrophe-headless', function() {
 
   this.timeout(20000);
 
-   after(function(done) {
+  after(function(done) {
     require('apostrophe/test-lib/util').destroy(apos, done);
   });
 
   it('initializes', function(done) {
     apos = require('apostrophe')({
       testModule: true,
-      shortName: 'apostrophe-headless-test',      
+      shortName: 'apostrophe-headless-test',
       modules: {
         'apostrophe-express': {
           secret: 'xxx',
@@ -37,7 +37,7 @@ describe('test apostrophe-headless', function() {
             safeDistinct: [ '_articles' ]
           },
           name: 'product',
-          apiKeys: ['product-key' ],
+          apiKeys: [ 'product-key' ],
           apiTemplates: [ 'fragment' ],
           addFields: [
             {
@@ -85,10 +85,10 @@ describe('test apostrophe-headless', function() {
               filters: {
                 projection: {
                   title: 1,
-                  slug: 1,
-                },
+                  slug: 1
+                }
               },
-              api: 'editPermissionRequired',
+              api: true
             }
           ]
         },
@@ -136,7 +136,7 @@ describe('test apostrophe-headless', function() {
                   title: 'Tab One Child Two',
                   slug: '/tab-one/child-two',
                   published: true
-                },
+                }
               ]
             },
             {
@@ -156,7 +156,7 @@ describe('test apostrophe-headless', function() {
                   title: 'Tab Two Child Two',
                   slug: '/tab-two/child-two',
                   published: true
-                },
+                }
               ],
               body: {
                 type: 'area',
@@ -166,9 +166,9 @@ describe('test apostrophe-headless', function() {
                     content: '<h3>How I discovered cheese</h3>\n' +
                       '<p>In the mountains of Pennsport, I found a spring.</p>'
                   }
-                ] 
+                ]
               }
-            },
+            }
           ]
         },
         'default-pages': {
@@ -201,7 +201,7 @@ describe('test apostrophe-headless', function() {
       }
     });
   });
-  
+
   it('can locate the admin group', function(done) {
     return apos.docs.db.findOne({ title: 'admin', type: 'apostrophe-group' }, function(err, group) {
       assert(!err);
@@ -232,7 +232,7 @@ describe('test apostrophe-headless', function() {
       done();
     });
 
-  });    
+  });
 
   it('can log in via REST as that user, obtain bearer token', function(done) {
     http('/api/v1/login', 'POST', {}, {
@@ -245,7 +245,7 @@ describe('test apostrophe-headless', function() {
       done();
     });
   });
-  
+
   it('cannot POST a product without a bearer token', function(done) {
     http('/api/v1/products', 'POST', {}, {
       title: 'Fake Product',
@@ -264,9 +264,9 @@ describe('test apostrophe-headless', function() {
       done();
     });
   });
-  
+
   var updateProduct;
-  
+
   it('can POST products with a bearer token, some published', function(done) {
     // range is exclusive at the top end, I want 10 things
     var nths = _.range(1, 11);
@@ -310,7 +310,7 @@ describe('test apostrophe-headless', function() {
       assert(response.results.length === 5);
       done();
     });
-  }); 
+  });
 
   it('Request with an invalid bearer token is a 401, even if it would otherwise be publicly accessible', function(done) {
     return http('/api/v1/products', 'GET', {}, {}, 'madeupbearertoken', function(err, response) {
@@ -320,7 +320,7 @@ describe('test apostrophe-headless', function() {
       assert(err.body.error === 'bearer token invalid');
       done();
     });
-  }); 
+  });
 
   it('can GET five of those products with a bearer token and no query parameters', function(done) {
     return http('/api/v1/products', 'GET', {}, {}, bearer, function(err, response) {
@@ -343,7 +343,7 @@ describe('test apostrophe-headless', function() {
   });
 
   var firstId;
-  
+
   it('can GET only 5 if perPage is 5', function(done) {
     http('/api/v1/products', 'GET', { perPage: 5, published: 'any' }, {}, bearer, function(err, response) {
       assert(!err);
@@ -370,7 +370,7 @@ describe('test apostrophe-headless', function() {
 
   it('can update a product', function(done) {
     http('/api/v1/products/' + updateProduct._id, 'PUT', {}, _.assign(
-      {}, 
+      {},
       updateProduct,
       {
         title: 'I like cheese',
@@ -395,14 +395,14 @@ describe('test apostrophe-headless', function() {
       done();
     });
   });
-  
+
   it('can delete a product', function(done) {
     http('/api/v1/products/' + updateProduct._id, 'DELETE', {}, {}, bearer, function(err, response) {
       assert(!err);
       done();
     });
   });
-  
+
   it('cannot fetch a deleted product', function(done) {
     http('/api/v1/products/' + updateProduct._id, 'GET', {}, {}, bearer, function(err, response) {
       assert(err);
@@ -463,7 +463,7 @@ describe('test apostrophe-headless', function() {
           }
         ]
       }
-    }, undefined, { 
+    }, undefined, {
       headers: {
         'Authorization': 'Api-Key skeleton-key'
       }
@@ -494,7 +494,7 @@ describe('test apostrophe-headless', function() {
             }
           ]
         },
-        articlesIds: [articleId], 
+        articlesIds: [articleId]
       }, undefined, function(err, response) {
         assert(!err);
         assert(response._id);
@@ -525,7 +525,7 @@ describe('test apostrophe-headless', function() {
 
   var attachment;
   var productWithPhoto;
-  
+
   it('can post an attachment with a bearer token', function(done) {
     return request({
       url: 'http://localhost:7900/api/v1/attachments',
@@ -534,11 +534,11 @@ describe('test apostrophe-headless', function() {
         file: fs.createReadStream(__dirname + '/test-image.jpg')
       },
       json: true,
-      auth: { bearer: bearer }    
+      auth: { bearer: bearer }
     }, function(err, response, body) {
       assert(!err);
       assert(response.statusCode < 400);
-      assert(typeof(body) === 'object');
+      assert(typeof (body) === 'object');
       assert(body._id);
       attachment = body;
       done();
@@ -556,7 +556,7 @@ describe('test apostrophe-headless', function() {
     }, function(err, response, body) {
       assert(!err);
       assert(response.statusCode < 400);
-      assert(typeof(body) === 'object');
+      assert(typeof (body) === 'object');
       assert(body._id);
       done();
     });
@@ -573,7 +573,7 @@ describe('test apostrophe-headless', function() {
     }, function(err, response, body) {
       assert(!err);
       assert(response.statusCode < 400);
-      assert(typeof(body) === 'object');
+      assert(typeof (body) === 'object');
       assert(body._id);
       done();
     });
@@ -593,7 +593,7 @@ describe('test apostrophe-headless', function() {
     }, function(err, response, body) {
       assert(!err);
       assert(response.statusCode < 400);
-      assert(typeof(body) === 'object');
+      assert(typeof (body) === 'object');
       assert(body._id);
       done();
     });
@@ -708,7 +708,7 @@ describe('test apostrophe-headless', function() {
             },
             {
               street: '106 Test Lane'
-            },
+            }
           ]
         }
       }
@@ -755,32 +755,6 @@ describe('test apostrophe-headless', function() {
     });
   });
 
-  it('can log out to destroy a bearer token', function(done) {
-    http('/api/v1/logout', 'POST', {}, {}, bearer, function(err, result) {
-      assert(!err);
-      done();
-    });
-  });
-
-  it('cannot POST a product with a logged-out bearer token', function(done) {
-    http('/api/v1/products', 'POST', {}, {
-      title: 'Fake Product After Logout',
-      body: {
-        type: 'area',
-        items: [
-          {
-            type: 'apostrophe-rich-text',
-            id: cuid(),
-            content: '<p>This is fake</p>'
-          }
-        ]
-      }
-    }, bearer, function(err, response) {
-      assert(err);
-      done();
-    });
-  });
-
   it('can render a fragment of a product', function(done) {
     http('/api/v1/products/' + productWithPhoto._id, 'GET', { render: 'fragment' }, undefined, undefined, function(err, result) {
       assert(!err);
@@ -806,15 +780,15 @@ describe('test apostrophe-headless', function() {
   var tabOneId, tabTwoId, addresses;
 
   it('unpark the parked pages other than home and trash to allow testing of move function', function(done) {
-    apos.docs.db.update({ 
-      $and: [ 
-        { slug: /^\// }, 
-        { 
-          slug: { 
-            $nin: [ '/', '/trash' ] 
-          } 
-        } 
-      ] 
+    apos.docs.db.update({
+      $and: [
+        { slug: /^\// },
+        {
+          slug: {
+            $nin: [ '/', '/trash' ]
+          }
+        }
+      ]
     }, {
       $unset: {
         parked: 1
@@ -825,7 +799,7 @@ describe('test apostrophe-headless', function() {
       done();
     });
   });
- 
+
   it('can get the home page and its children', function(done) {
     return http('/api/v1/apostrophe-pages', 'GET', {}, {}, undefined, function(err, response) {
       assert(!err);
@@ -1016,7 +990,7 @@ describe('test apostrophe-headless', function() {
             },
             {
               street: '106 Test Lane'
-            },
+            }
           ]
         }
       }
@@ -1079,7 +1053,7 @@ describe('test apostrophe-headless', function() {
     var saveRestApi = apos.modules.products.options.restApi;
     apos.modules.products.options.restApi = {
       getRequiresEditPermission: true
-    }
+    };
     return http('/api/v1/products', 'GET', {}, {}, undefined, function(err, response) {
       assert(!err);
       assert(response);
@@ -1088,7 +1062,7 @@ describe('test apostrophe-headless', function() {
       apos.modules.products.options.restApi = saveRestApi;
       done();
     });
-  }); 
+  });
 
   it('can GET a product without private fields', function(done) {
     apos.modules.products.schema[0].api = false;
@@ -1101,7 +1075,7 @@ describe('test apostrophe-headless', function() {
       apos.modules.products.schema[0].api = true;
       done();
     });
-  }); 
+  });
 
   it('can GET a product with only some fields and includeFields has the priority over excludeFields', function(done) {
     apos.modules.products.schema[0].api = false;
@@ -1116,7 +1090,7 @@ describe('test apostrophe-headless', function() {
       apos.modules.products.schema[0].api = true;
       done();
     });
-  }); 
+  });
 
   it('can GET a product with only some fields but an excluded field from schema is always excluded', function(done) {
     apos.modules.products.schema[0].api = false;
@@ -1131,7 +1105,7 @@ describe('test apostrophe-headless', function() {
       apos.modules.products.schema[0].api = true;
       done();
     });
-  }); 
+  });
 
   it('can GET a product with only some fields excluded', function(done) {
     apos.modules.products.schema[0].api = false;
@@ -1146,7 +1120,7 @@ describe('test apostrophe-headless', function() {
       apos.modules.products.schema[0].api = true;
       done();
     });
-  }); 
+  });
 
   it('can GET a product with only some fields excluded and an excluded field from schema is still excluded', function(done) {
     apos.modules.products.schema[0].api = false;
@@ -1161,20 +1135,11 @@ describe('test apostrophe-headless', function() {
       apos.modules.products.schema[0].api = true;
       done();
     });
-  }); 
-
-  it('can GET a product without excluded joins', function(done) {
-    return http('/api/v1/products', 'GET', {}, {}, undefined, function(err, response) {
-      assert(!err);
-      assert(response);
-      assert(response.results);
-      var product = _.find(response.results, { slug: 'product-key-product-with-join' });
-      assert(typeof product['_articles'] === 'undefined');
-      done();
-    });
-  }); 
+  });
 
   it('can GET a product without excluded joins even if included in query', function(done) {
+    var articleInSchema = _.find(apos.modules.products.schema, { name: '_articles' });
+    articleInSchema.api = 'editPermissionRequired';
     return http('/api/v1/products?includeFields=slug,type,_articles', 'GET', {}, {}, undefined, function(err, response) {
       assert(!err);
       assert(response);
@@ -1183,13 +1148,13 @@ describe('test apostrophe-headless', function() {
       assert(typeof product.type === 'string');
       assert(typeof product.slug === 'string');
       assert(typeof product['_articles'] === 'undefined');
+      var articleInSchema = _.find(apos.modules.products.schema, { name: '_articles' });
+      articleInSchema.api = true;
       done();
     });
-  }); 
+  });
 
   it('can GET a product with joins', function(done) {
-    var articleInSchema = _.find(apos.modules.products.schema, { name: '_articles' })
-    articleInSchema.api = true
     return http('/api/v1/products', 'GET', {}, {}, undefined, function(err, response) {
       assert(!err);
       assert(response);
@@ -1197,14 +1162,42 @@ describe('test apostrophe-headless', function() {
       var product = _.find(response.results, { slug: 'product-key-product-with-join' });
       assert(Array.isArray(product['_articles']));
       assert(product['_articles'].length === 1);
-      articleInSchema.api = 'editPermissionRequired';
       done();
     });
-  }); 
+  });
+
+  it('cannot get an editPermissionRequired field without permissions', function(done) {
+    var articleInSchema = _.find(apos.modules.products.schema, { name: '_articles' });
+    articleInSchema.api = 'editPermissionRequired';
+    return http('/api/v1/products', 'GET', {}, {}, undefined, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      var product = _.find(response.results, { slug: 'product-key-product-with-join' });
+      assert(!product._articles);
+      // For the next test's normal operation
+      articleInSchema.api = true;
+      done();
+    });
+  });
+
+  it('can get an editPermissionRequired field with the bearer token', function(done) {
+    var articleInSchema = _.find(apos.modules.products.schema, { name: '_articles' });
+    articleInSchema.api = 'editPermissionRequired';
+    return http('/api/v1/products', 'GET', {}, {}, bearer, function(err, response) {
+      assert(!err);
+      assert(response);
+      assert(response.results);
+      var product = _.find(response.results, { slug: 'product-key-product-with-join' });
+      assert(product._articles);
+      assert(product._articles.length === 1);
+      // For the next test's normal operation
+      articleInSchema.api = true;
+      done();
+    });
+  });
 
   it('can GET a product with included joins', function(done) {
-    var articleInSchema = _.find(apos.modules.products.schema, { name: '_articles' })
-    articleInSchema.api = true
     return http('/api/v1/products?includeFields=slug,type,_articles', 'GET', {}, {}, undefined, function(err, response) {
       assert(!err);
       assert(response);
@@ -1214,10 +1207,9 @@ describe('test apostrophe-headless', function() {
       assert(typeof product.slug === 'string');
       assert(Array.isArray(product['_articles']));
       assert(product['_articles'].length === 1);
-      articleInSchema.api = 'editPermissionRequired';
       done();
     });
-  }); 
+  });
 
   it('can GET results with distinct article join information', function(done) {
     return http('/api/v1/products?distinct=_articles', 'GET', {}, {}, undefined, function(err, response) {
@@ -1229,7 +1221,7 @@ describe('test apostrophe-headless', function() {
       assert(response.distinct._articles[0].label === 'First Article');
       done();
     });
-  }); 
+  });
 
   it('can GET results with distinct article join count information', function(done) {
     return http('/api/v1/products?distinct-counts=_articles', 'GET', {}, {}, undefined, function(err, response) {
@@ -1264,31 +1256,47 @@ describe('test apostrophe-headless', function() {
               content: '<p>This is the product key product without initial join</p>'
             }
           ]
-        },
+        }
       }, undefined, function(err, response) {
         assert(!err);
         var product = response;
         assert(product._id);
         http('/api/v1/products/' + product._id, 'PATCH', { apiKey: 'skeleton-key' }, {
-          title: 'Initially No Join Value',
-          body: {
-            type: 'area',
-            items: [
-              {
-                type: 'apostrophe-rich-text',
-                id: cuid(),
-                content: '<p>This is the product key product without initial join</p>'
-              }
-            ]
-          },
-          articlesIds: [articleId], 
+          articlesIds: [articleId]
         }, undefined, function(err, response) {
           assert(!err);
+          assert(response.title === 'Initially No Join Value');
           assert(response.articlesIds);
           assert(response.articlesIds[0] === articleId);
           done();
         });
       });
+    });
+  });
+
+  it('can log out to destroy a bearer token', function(done) {
+    http('/api/v1/logout', 'POST', {}, {}, bearer, function(err, result) {
+      assert(!err);
+      done();
+    });
+  });
+
+  it('cannot POST a product with a logged-out bearer token', function(done) {
+    http('/api/v1/products', 'POST', {}, {
+      title: 'Fake Product After Logout',
+      body: {
+        type: 'area',
+        items: [
+          {
+            type: 'apostrophe-rich-text',
+            id: cuid(),
+            content: '<p>This is fake</p>'
+          }
+        ]
+      }
+    }, bearer, function(err, response) {
+      assert(err);
+      done();
     });
   });
 
