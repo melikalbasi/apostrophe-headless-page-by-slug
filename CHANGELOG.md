@@ -1,3 +1,13 @@
+## 2.9.0
+
+* Basic support for combining apostrophe-workflow with this module. GET requests now succeed as expected when the `_workflowLocale` query parameter is used to specify the desired locale. Otherwise, as before, you receive content for the default locale only. Note that you can only obtain live content, not draft content. POST, PUT and PATCH requests currently are not fully supported with workflow. Note that there is no issue if the doc type in question is excluded from workflow via `excludeTypes`. It is our intention to provide more complete support for headless workflow over time.
+
+## 2.8.0
+
+* Various tickets have been opened due to confusion around what happens if you use `includeFields` or `excludeFields` and, as a result, you do not include the following fields: `type`, `_id`, `tags`, `slug` and `docPermissions`. This can lead to the unexpected failure of joins, the unexpected absence of the `_url` property (or a bad value for that property), and the unexpected absence of the `_edit: true` property. This release fixes this issue by always including these fields in the MongoDB query, but excluding them after the fact in the returned array of results if they are present in `excludeFields`.
+* The current `page` property is always included in the response when fetching pieces.
+* eslint added to the tests, passes the apostrophe eslint config.
+
 ## 2.7.1
 
 * The `PATCH` method works properly with `joinByOne` and `joinByArray`. You should send the appropriate `idField` or `idsField`. If these are not explicitly configured, the names map as follows: `_joinName` maps to `joinNameIdField` or `joinNameIdsField` (note there is no `_`), depending on whether it is a `joinByOne` or `joinByArray` field. Thanks to Giuseppe Monteleone for flagging the issue.
